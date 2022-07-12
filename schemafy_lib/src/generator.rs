@@ -1,4 +1,4 @@
-use crate::Expander;
+use crate::{Expander, Schema};
 use std::{
     io,
     path::{Path, PathBuf},
@@ -22,7 +22,9 @@ pub struct Generator<'a, 'b> {
     /// the default should be fine.
     pub schemafy_path: &'a str,
     /// The JSON schema file to read
-    pub input_file: &'b Path,
+    pub input_file: Option<&'b Path>,
+    /// The JSON string to interpret, mutually exclusive with `input_file`
+    pub input_json: Option<String>,
 }
 
 impl<'a, 'b> Generator<'a, 'b> {
@@ -31,27 +33,33 @@ impl<'a, 'b> Generator<'a, 'b> {
         GeneratorBuilder::default()
     }
 
-    pub fn generate(&self) -> proc_macro2::TokenStream {
-        let input_file = if self.input_file.is_relative() {
-            let crate_root = get_crate_root().unwrap();
-            crate_root.join(self.input_file)
+    pub fn generate_with_schema<'c>(&'c self) -> (proc_macro2::TokenStream, Schema) {
+        let json = if let Some(input_file) = self.input_file {
+            let input_file = if input_file.is_relative() {
+                let crate_root = get_crate_root().unwrap();
+                crate_root.join(input_file)
+            } else {
+                PathBuf::from(input_file)
+            };
+
+            std::fs::read_to_string(&input_file).unwrap_or_else(|err| {
+                panic!("Unable to read `{}`: {}", input_file.to_string_lossy(), err)
+            })
+        } else if let Some(input_json) = &self.input_json {
+            input_json.clone()
         } else {
-            PathBuf::from(self.input_file)
+            panic!("Either input file or inpt json should be specified");
         };
 
-        let json = std::fs::read_to_string(&input_file).unwrap_or_else(|err| {
-            panic!("Unable to read `{}`: {}", input_file.to_string_lossy(), err)
-        });
-
-        let schema = serde_json::from_str(&json).unwrap_or_else(|err| {
-            panic!(
-                "Cannot parse `{}` as JSON: {}",
-                input_file.to_string_lossy(),
-                err
-            )
-        });
+        let schema = serde_json::from_str(&json)
+            .unwrap_or_else(|err| panic!("Cannot parse input as JSON: {}", err));
         let mut expander = Expander::new(self.root_name.as_deref(), self.schemafy_path, &schema);
-        expander.expand(&schema)
+        let token_stream = expander.expand(&schema);
+        (token_stream, schema)
+    }
+
+    pub fn generate(&self) -> proc_macro2::TokenStream {
+        self.generate_with_schema().0
     }
 
     pub fn generate_to_file<P: ?Sized + AsRef<Path>>(&self, output_file: &'b P) -> io::Result<()> {
@@ -78,7 +86,8 @@ impl<'a, 'b> Default for GeneratorBuilder<'a, 'b> {
             inner: Generator {
                 root_name: None,
                 schemafy_path: "::schemafy_core::",
-                input_file: Path::new("schema.json"),
+                input_file: None,
+                input_json: None,
             },
         }
     }
@@ -94,7 +103,11 @@ impl<'a, 'b> GeneratorBuilder<'a, 'b> {
         self
     }
     pub fn with_input_file<P: ?Sized + AsRef<Path>>(mut self, input_file: &'b P) -> Self {
-        self.inner.input_file = input_file.as_ref();
+        self.inner.input_file = Some(input_file.as_ref());
+        self
+    }
+    pub fn with_input_json(mut self, input_json: String) -> Self {
+        self.inner.input_json = Some(input_json);
         self
     }
     pub fn with_schemafy_path(mut self, schemafy_path: &'a str) -> Self {
