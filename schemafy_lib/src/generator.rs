@@ -48,7 +48,7 @@ impl<'a, 'b> Generator<'a, 'b> {
         } else if let Some(input_json) = &self.input_json {
             input_json.clone()
         } else {
-            panic!("Either input file or inpt json should be specified");
+            panic!("Either input file or input json should be specified");
         };
 
         let schema = serde_json::from_str(&json)
