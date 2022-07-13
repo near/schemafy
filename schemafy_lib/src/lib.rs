@@ -319,10 +319,10 @@ pub struct Expander<'r> {
     types: Vec<(String, TokenStream)>,
 }
 
-struct FieldType {
-    typ: String,
-    attributes: Vec<String>,
-    default: bool,
+pub struct FieldType {
+    pub typ: String,
+    pub attributes: Vec<String>,
+    pub default: bool,
 }
 
 impl<S> From<S> for FieldType
@@ -414,7 +414,7 @@ impl<'r> Expander<'r> {
 
     fn expand_type(&mut self, type_name: &str, required: bool, typ: &Schema) -> FieldType {
         let saved_type = self.current_type.clone();
-        let mut result = self.expand_type_(typ);
+        let mut result = self.expand_type_from_schema(typ);
         self.current_type = saved_type;
         if type_name.to_pascal_case() == result.typ.to_pascal_case() {
             result.typ = format!("Box<{}>", result.typ)
@@ -432,7 +432,7 @@ impl<'r> Expander<'r> {
         result
     }
 
-    fn expand_type_(&mut self, typ: &Schema) -> FieldType {
+    pub fn expand_type_from_schema(&mut self, typ: &Schema) -> FieldType {
         if let Some(ref ref_) = typ.ref_ {
             self.type_ref(ref_).into()
         } else if typ.any_of.as_ref().map_or(false, |a| a.len() >= 2) {
@@ -443,7 +443,7 @@ impl<'r> Expander<'r> {
                 if let SimpleTypes::Array = array.type_[0] {
                     if simple == self.schema(&array.items[0]) {
                         return FieldType {
-                            typ: format!("Vec<{}>", self.expand_type_(&any_of[0]).typ),
+                            typ: format!("Vec<{}>", self.expand_type_from_schema(&any_of[0]).typ),
                             attributes: vec![format!(
                                 r#"with="{}one_or_many""#,
                                 self.schemafy_path
@@ -465,7 +465,7 @@ impl<'r> Expander<'r> {
                 ty.type_.retain(|x| *x != SimpleTypes::Null);
 
                 FieldType {
-                    typ: format!("Option<{}>", self.expand_type_(&ty).typ),
+                    typ: format!("Option<{}>", self.expand_type_from_schema(&ty).typ),
                     attributes: vec![],
                     default: true,
                 }
@@ -502,7 +502,7 @@ impl<'r> Expander<'r> {
                     let prop = match typ.additional_properties {
                         Some(ref props) if props.is_object() => {
                             let prop = serde_json::from_value(props.clone()).unwrap();
-                            self.expand_type_(&prop).typ
+                            self.expand_type_from_schema(&prop).typ
                         }
                         _ => "serde_json::Value".into(),
                     };
@@ -516,7 +516,7 @@ impl<'r> Expander<'r> {
                 SimpleTypes::Array => {
                     let item_type = typ.items.get(0).map_or("serde_json::Value".into(), |item| {
                         self.current_type = format!("{}Item", self.current_type);
-                        self.expand_type_(item).typ
+                        self.expand_type_from_schema(item).typ
                     });
                     format!("Vec<{}>", item_type).into()
                 }
