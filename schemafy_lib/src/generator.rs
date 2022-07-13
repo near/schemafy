@@ -4,6 +4,14 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[derive(Debug, PartialEq)]
+pub enum Input<'a> {
+    /// The JSON Schema file to read
+    File(&'a Path),
+    /// The JSON string to interpret, mutually exclusive with `input_file`
+    Json(&'a str),
+}
+
 /// A configurable builder for generating Rust types from a JSON
 /// schema.
 ///
@@ -21,10 +29,8 @@ pub struct Generator<'a, 'b> {
     /// re-exported this crate or imported it under a different name,
     /// the default should be fine.
     pub schemafy_path: &'a str,
-    /// The JSON schema file to read
-    pub input_file: Option<&'b Path>,
-    /// The JSON string to interpret, mutually exclusive with `input_file`
-    pub input_json: Option<String>,
+    /// The input to interpret as JSON Schema
+    pub input: Input<'b>,
 }
 
 impl<'a, 'b> Generator<'a, 'b> {
@@ -33,22 +39,21 @@ impl<'a, 'b> Generator<'a, 'b> {
         GeneratorBuilder::default()
     }
 
-    pub fn generate_with_schema<'c>(&'c self) -> (proc_macro2::TokenStream, Schema) {
-        let json = if let Some(input_file) = self.input_file {
-            let input_file = if input_file.is_relative() {
-                let crate_root = get_crate_root().unwrap();
-                crate_root.join(input_file)
-            } else {
-                PathBuf::from(input_file)
-            };
+    pub fn generate_with_schema(&self) -> (proc_macro2::TokenStream, Schema) {
+        let json = match self.input {
+            Input::File(input_file) => {
+                let input_file = if input_file.is_relative() {
+                    let crate_root = get_crate_root().unwrap();
+                    crate_root.join(input_file)
+                } else {
+                    PathBuf::from(input_file)
+                };
 
-            std::fs::read_to_string(&input_file).unwrap_or_else(|err| {
-                panic!("Unable to read `{}`: {}", input_file.to_string_lossy(), err)
-            })
-        } else if let Some(input_json) = &self.input_json {
-            input_json.clone()
-        } else {
-            panic!("Either input file or input json should be specified");
+                std::fs::read_to_string(&input_file).unwrap_or_else(|err| {
+                    panic!("Unable to read `{}`: {}", input_file.to_string_lossy(), err)
+                })
+            }
+            Input::Json(input_json) => input_json.to_owned(),
         };
 
         let schema = serde_json::from_str(&json)
@@ -86,8 +91,7 @@ impl<'a, 'b> Default for GeneratorBuilder<'a, 'b> {
             inner: Generator {
                 root_name: None,
                 schemafy_path: "::schemafy_core::",
-                input_file: None,
-                input_json: None,
+                input: Input::File(Path::new("schema.json")),
             },
         }
     }
@@ -103,11 +107,11 @@ impl<'a, 'b> GeneratorBuilder<'a, 'b> {
         self
     }
     pub fn with_input_file<P: ?Sized + AsRef<Path>>(mut self, input_file: &'b P) -> Self {
-        self.inner.input_file = Some(input_file.as_ref());
+        self.inner.input = Input::File(input_file.as_ref());
         self
     }
-    pub fn with_input_json(mut self, input_json: String) -> Self {
-        self.inner.input_json = Some(input_json);
+    pub fn with_input_json(mut self, input_json: &'b str) -> Self {
+        self.inner.input = Input::Json(input_json);
         self
     }
     pub fn with_schemafy_path(mut self, schemafy_path: &'a str) -> Self {
