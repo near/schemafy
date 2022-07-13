@@ -40,7 +40,7 @@ impl<'a, 'b> Generator<'a, 'b> {
     }
 
     pub fn generate_with_schema(&self) -> (proc_macro2::TokenStream, Schema) {
-        let json = match self.input {
+        let schema = match self.input {
             Input::File(input_file) => {
                 let input_file = if input_file.is_relative() {
                     let crate_root = get_crate_root().unwrap();
@@ -49,15 +49,16 @@ impl<'a, 'b> Generator<'a, 'b> {
                     PathBuf::from(input_file)
                 };
 
-                std::fs::read_to_string(&input_file).unwrap_or_else(|err| {
+                let json = std::fs::read_to_string(&input_file).unwrap_or_else(|err| {
                     panic!("Unable to read `{}`: {}", input_file.to_string_lossy(), err)
-                })
+                });
+                serde_json::from_str(&json)
+                    .unwrap_or_else(|err| panic!("Cannot parse input as JSON: {}", err))
             }
-            Input::Json(input_json) => input_json.to_owned(),
+            Input::Json(input_json) => serde_json::from_str(input_json)
+                .unwrap_or_else(|err| panic!("Cannot parse input as JSON: {}", err)),
         };
 
-        let schema = serde_json::from_str(&json)
-            .unwrap_or_else(|err| panic!("Cannot parse input as JSON: {}", err));
         let mut expander = Expander::new(self.root_name.as_deref(), self.schemafy_path, &schema);
         let token_stream = expander.expand(&schema);
         (token_stream, schema)
