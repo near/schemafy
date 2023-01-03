@@ -1,14 +1,14 @@
 [package]
-name = "schemafy_core"
-version = "0.6.0" # VERSION_TAG
-authors = ["Markus Westerlind <marwes91@gmail.com>"]
+name = "schemafy_near_core"
+version = "0.7.0" # VERSION_TAG
+authors = ["Markus Westerlind <marwes91@gmail.com>", "Near Inc <hello@nearprotocol.com>"]
 edition = "2018"
 
 description = "Generates serializeable Rust types from a json schema"
 license = "MIT"
 
-repository = "https://github.com/Marwes/schemafy"
-documentation = "https://docs.rs/schemafy"
+repository = "https://github.com/near/schemafy"
+documentation = "https://docs.rs/schemafy-near"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

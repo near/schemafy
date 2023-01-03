@@ -1,14 +1,14 @@
 [package]
-name = "schemafy"
-version = "0.6.0" # VERSION_TAG
-authors = ["Markus Westerlind <marwes91@gmail.com>"]
+name = "schemafy-near"
+version = "0.7.0" # VERSION_TAG
+authors = ["Markus Westerlind <marwes91@gmail.com>", "Near Inc <hello@nearprotocol.com>"]
 edition = "2018"
 
 description = "Generates serializeable Rust types from a json schema"
 license = "MIT"
 keywords = ["json-schema", "code-generation"]
-repository = "https://github.com/Marwes/schemafy"
-documentation = "https://docs.rs/schemafy"
+repository = "https://github.com/near/schemafy"
+documentation = "https://docs.rs/schemafy-near"
 
 [lib]
 proc-macro = true
@@ -19,7 +19,7 @@ path = "src/generate_tests.rs"
 required-features = ["generate-tests"]
 
 [[bin]]
-name = "schemafy"
+name = "schemafy-near"
 path = "src/main.rs"
 required-features = ["tool"]
 
@@ -27,8 +27,8 @@ required-features = ["tool"]
 
 [dependencies]
 anyhow = { version = "1", optional = true }
-schemafy_core = { version = "0.6.0", path = "schemafy_core" } # VERSION_TAG
-schemafy_lib = { version = "0.6.0", path = "schemafy_lib" }   # VERSION_TAG
+schemafy_core = { version = "0.7.0", path = "schemafy_core", package = "schemafy_near_core" } # VERSION_TAG
+schemafy_lib = { version = "0.7.0", path = "schemafy_lib", package = "schemafy_near_lib" }   # VERSION_TAG
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
@@ -40,8 +40,8 @@ tempfile = { version = "3", optional = true }
 Inflector = "0.11"
 
 [build-dependencies]
-schemafy_core = { version = "0.6.0", path = "schemafy_core" } # VERSION_TAG
-schemafy_lib = { version = "0.6.0", path = "schemafy_lib" }   # VERSION_TAG
+schemafy_core = { version = "0.7.0", path = "schemafy_core", package = "schemafy_near_core" } # VERSION_TAG
+schemafy_lib = { version = "0.7.0", path = "schemafy_lib", package = "schemafy_near_lib" }   # VERSION_TAG
 
 [features]
 internal-regenerate = []
