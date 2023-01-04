@@ -1,5 +1,5 @@
 [package]
-name = "schemafy_near_core"
+name = "near_schemafy_core"
 version = "0.7.0" # VERSION_TAG
 authors = ["Markus Westerlind <marwes91@gmail.com>", "Near Inc <hello@nearprotocol.com>"]
 edition = "2018"
